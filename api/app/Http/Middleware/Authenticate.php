@@ -1,17 +1,37 @@
 <?php
-
 namespace App\Http\Middleware;
 
-use Illuminate\Auth\Middleware\Authenticate as Middleware;
-use Illuminate\Http\Request;
+use Closure;
+use Symfony\Component\HttpFoundation\Response;
 
-class Authenticate extends Middleware
+class Authenticate
 {
-    /**
-     * Get the path the user should be redirected to when they are not authenticated.
-     */
-    protected function redirectTo(Request $request): ?string
+    public function handle($request, Closure $next, ...$guards)
     {
-        return $request->expectsJson() ? null : route('login');
+        if ($this->authenticate($request, $guards)) {
+            return $next($request);
+        }
+
+        return response()->json(['error' => 'Không được phép'], Response::HTTP_FORBIDDEN);
+    }
+
+    protected function authenticate($request, array $guards)
+    {
+        if (empty($guards)) {
+            $guards[] = null;
+        }
+
+        foreach ($guards as $guard) {
+            if ($this->isGuardAuthenticated($request, $guard)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function isGuardAuthenticated($request, $guard)
+    {
+        return auth()->guard($guard)->check();
     }
 }
